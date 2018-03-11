@@ -4,7 +4,7 @@ import sys
 from ._common import *
 from ._exceptions import InvalidImageDataError
 from ._exif import *
-from piexif import _webp
+from piexif import _webp, _png
 
 LITTLE_ENDIAN = b"\x49\x49"
 
@@ -79,6 +79,8 @@ class _ExifReader(object):
             self.tiftag = data
         elif maybe_image and data[0:4] == b"RIFF" and data[8:12] == b"WEBP":
             self.tiftag = _webp.get_exif(data)
+        elif maybe_image and data[0:len(_png.PNG_HEADER)] == _png.PNG_HEADER:
+            self.tiftag = _png.get_exif(data)
         elif maybe_image and data[0:4] == b"Exif":  # Exif
             self.tiftag = data[6:]
         else:
@@ -100,6 +102,10 @@ class _ExifReader(object):
                     with open(data, 'rb') as f:
                         file_data = f.read()
                     self.tiftag = _webp.get_exif(file_data)
+                elif header[0:len(_png.PNG_HEADER)] == _png.PNG_HEADER:
+                    with open(data, 'rb') as f:
+                        file_data = f.read()
+                    self.tiftag = _png.get_exif(file_data)
                 else:
                     raise InvalidImageDataError("Given file is neither JPEG nor TIFF.")
 
