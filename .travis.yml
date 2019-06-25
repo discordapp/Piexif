@@ -1,15 +1,22 @@
 sudo: false
 
+dist: xenial
 language: python
 
 python:
  - pypy
  - pypy3
  - 2.7
- - 3.3
  - 3.4
  - 3.5
  - 3.6
+ - 3.7
+ - nightly
+
+matrix:
+  allow_failures:
+    - python: "nightly"
+
 
 install:
  - pip install pillow==4.0.0
