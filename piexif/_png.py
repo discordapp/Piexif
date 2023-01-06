@@ -64,7 +64,7 @@ def get_exif(data):
 
 def insert_exif_into_chunks(chunks, exif_bytes):
     exif_length_bytes = struct.pack(">L", len(exif_bytes))
-    crc = struct.pack(">L", crc32(EXIF_MARKER + exif_bytes))[::-1]
+    crc = struct.pack(">L", crc32(EXIF_MARKER + exif_bytes))
     exif_chunk = {
         "fourcc":EXIF_MARKER,
         "length_bytes":exif_length_bytes,
