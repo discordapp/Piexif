@@ -39,11 +39,11 @@ def split(data):
 
         if fourcc == END_SIGN:
             break
-        
+
     return chunks
 
 def merge_chunks(chunks):
-    merged = b"".join([chunk["length_bytes"] 
+    merged = b"".join([chunk["length_bytes"]
                        + chunk["fourcc"]
                        + chunk["data"]
                        + chunk["crc"]
@@ -63,9 +63,8 @@ def get_exif(data):
 
 
 def insert_exif_into_chunks(chunks, exif_bytes):
-    exif_length_bytes = struct.pack("<L", len(exif_bytes))
-    crc = struct.pack("<L", crc32(EXIF_MARKER + exif_bytes))[::-1]
-    print(EXIF_MARKER + exif_bytes)
+    exif_length_bytes = struct.pack(">L", len(exif_bytes))
+    crc = struct.pack(">L", crc32(EXIF_MARKER + exif_bytes))[::-1]
     exif_chunk = {
         "fourcc":EXIF_MARKER,
         "length_bytes":exif_length_bytes,
@@ -78,8 +77,6 @@ def insert_exif_into_chunks(chunks, exif_bytes):
             chunks[index] = exif_chunk
             return chunks
     chunks.insert(-1, exif_chunk)
-    for chunk in chunks:
-        print(chunk["fourcc"])
     return chunks
 
 
