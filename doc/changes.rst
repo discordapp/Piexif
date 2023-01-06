@@ -1,6 +1,32 @@
 Changelog
 =========
 
+1.1.3
+-----
+
+- Fix failure to decode a minimal 1 x 1 pixel JPEG. Related to https://github.com/hMatoba/Piexif/pull/93.
+
+1.1.2
+-----
+
+- Resolve issue. https://github.com/hMatoba/Piexif/issues/64
+
+1.1.1
+-----
+
+- Ignore XMP segment. Related to https://github.com/hMatoba/Piexif/pull/74.
+
+1.1.0b
+------
+
+- "load", "insert", and "remove" support WebP format.
+
+1.0.13
+------
+
+- Added helper function to read and write "UserComment".
+- Added to support for SignedByte, SigendShort, Float, and Double.
+
 1.0.12
 ------
 

@@ -4,7 +4,7 @@ Piexif
 |Build Status| |Windows Build| |Coverage Status| |docs|
 
 
-To simplify exif manipulations with python. Writing, reading, and more... Piexif is pure python. To everywhere with Python.
+To simplify exif manipulations with Python. Writing, reading, and more... Piexif is pure Python. To everywhere with Python.
 
 
 Document: http://piexif.readthedocs.org/en/latest/
@@ -37,9 +37,9 @@ How to Use
 There are only just five functions.
 
 - *load(filename)* - Get exif data as *dict*.
-- *dump(exif_dict)* - Get exif as *bytes* to save with JPEG.
-- *insert(exif_bytes, filename)* - Insert exif into JPEG.
-- *remove(filename)* - Remove exif from JPEG.
+- *dump(exif_dict)* - Get exif as *bytes*.
+- *insert(exif_bytes, filename)* - Insert exif into JPEG, or WebP.
+- *remove(filename)* - Remove exif from JPEG, or WebP.
 - *transplant(filename, filename)* - Transplant exif from JPEG to JPEG.
 
 Example
@@ -72,12 +72,12 @@ With PIL(Pillow)
 Environment
 -----------
 
-Tested on Python 2.7, 3.3, 3.4, 3.5, pypy, and pypy3. Piexif would run even on IronPython. Piexif is OS independent and can run on GoogleAppEngine.
+Tested on Python 2.7, 3.5+ and PyPy3. Piexif would run even on IronPython. Piexif is OS independent and can run on Google App Engine.
 
 License
 -------
 
-This software is released under the MIT License, see LICENSE.txt.
+This software is released under the MIT license, see LICENSE.txt.
 
 .. |Build Status| image:: https://api.travis-ci.org/hMatoba/Piexif.svg?branch=master
    :target: https://travis-ci.org/hMatoba/Piexif

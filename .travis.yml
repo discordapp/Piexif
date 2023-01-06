@@ -1,18 +1,19 @@
-sudo: false
-
 language: python
+cache: pip
 
-python:
- - pypy
- - pypy3
- - 2.7
- - 3.3
- - 3.4
- - 3.5
- - 3.6
+matrix:
+  fast_finish: true
+  include:
+    - python: pypy3
+    - python: 3.5
+    - python: 3.6
+    - python: 3.7
+      dist: xenial
+    - python: 3.8-dev
+      dist: xenial
 
 install:
- - pip install pillow==4.0.0
+ - pip install pillow
  - pip install coveralls
 
 script:
@@ -20,6 +21,3 @@ script:
 
 after_success:
   coveralls
-
-matrix:
-  fast_finish: true
