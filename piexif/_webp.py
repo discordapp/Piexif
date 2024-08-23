@@ -1,6 +1,8 @@
 
 import struct
 
+# Define a maximum recursion depth to avoid excessive recursion
+MAX_WEBP_CHUNK_RECURSION_DEPTH = 10
 
 def split(data):
     if data[0:4] != b"RIFF" or data[8:12] != b"WEBP":
@@ -92,25 +94,104 @@ def _get_size_from_anmf(chunk):
     height_minus_one = struct.unpack("<L", height_minus_one_bytes)[0]
     height = height_minus_one + 1
     return (width, height)
-    
-def set_vp8x(chunks):
 
-    width = None
-    height = None
+def _get_sub_chunks_from_anmf(anmf_chunk):
+    """
+    Extracts and returns sub-chunks from the ANMF chunk data.
+    :param anmf_chunk: Dictionary containing the chunk 'fourcc', 'length_bytes', and 'data'.
+    :return: List of dictionaries representing sub-chunks found within the ANMF chunk.
+    """
+
+    data = anmf_chunk['data']
+    sub_chunks = []
+    offset = 0
+
+    # Fixed size for the ANMF header (Frame X, Frame Y, Width, Height, Duration, Reserved, B, D)
+    anmf_header_size = 16
+
+    # Skip the ANMF header to get to the Frame Data
+    offset += anmf_header_size
+
+    data_length = len(data)
+    while offset < data_length:
+        # Ensure there's enough data left for a new chunk (4 bytes for fourcc + 4 bytes for length)
+        if offset + 8 > data_length:
+            break
+
+        # Read the fourcc code (4 bytes)
+        fourcc = data[offset:offset + 4]
+        offset += 4
+
+        # Read the length of the chunk (4 bytes, little-endian)
+        length = struct.unpack('<I', data[offset:offset + 4])[0]
+        offset += 4
+
+        # Ensure there's enough data left for the chunk data
+        if offset + length > data_length:
+            break
+
+        # Read the chunk data
+        chunk_data = data[offset:offset + length]
+        offset += length
+
+        # Append the sub-chunk to the list
+        sub_chunks.append({
+            'fourcc': fourcc,
+            'length_bytes': struct.pack('<I', length),
+            'data': chunk_data
+        })
+
+        # Ensure chunks are padded to even length
+        if length % 2 == 1:
+            offset += 1
+
+    return sub_chunks
+
+def update_max_dimensions(current_width, current_height, width, height):
+    """
+    Updates the maximum width and height values based on the provided width and height values.
+    :param current_width: Current maximum width value.
+    :param current_height: Current maximum height value.
+    :param width: New width value to compare.
+    :param height: New height value to compare.
+    :return: Tuple containing the updated maximum width and height values.
+    """
+    return max(current_width, width), max(current_height, height)
+
+def set_vp8x(chunks):
+    """
+    Sets the VP8X chunk based on the maximum width and height values found in the WebP chunks.
+    :param chunks: List of dictionaries representing the WebP chunks.
+    :return: List of dictionaries with the VP8X chunk prepended to the list.
+    """
+    # Track the maximum width and height across all frames to ensure correct canvas size
+    max_width = 0
+    max_height = 0
     flags = [b"0", b"0", b"0", b"0", b"0", b"0", b"0", b"0"]  # [0, 0, ICC, Alpha, EXIF, XMP, Anim, 0]
 
-    for chunk in chunks:
+    def process_chunk(chunk, depth=0):
+        if depth > MAX_WEBP_CHUNK_RECURSION_DEPTH:
+            raise RecursionError("Exceeded max allowed recursion depth while processing chunk.")
+
+        nonlocal max_width, max_height
         if chunk["fourcc"] == b"VP8X":
             width, height = _get_size_from_vp8x(chunk)
+            max_width, max_height = update_max_dimensions(max_width, max_height, width, height)
         elif chunk["fourcc"] == b"VP8 ":
             width, height = _get_size_from_vp8(chunk)
+            max_width, max_height = update_max_dimensions(max_width, max_height, width, height)
         elif chunk["fourcc"] == b"VP8L":
             is_rgba = _vp8L_contains_alpha(chunk["data"])
             if is_rgba:
                 flags[3] = b"1"
             width, height = _get_size_from_vp8L(chunk)
+            max_width, max_height = update_max_dimensions(max_width, max_height, width, height)
         elif chunk["fourcc"] == b"ANMF":
+            sub_chunks = _get_sub_chunks_from_anmf(chunk)
+            for sub_chunk in sub_chunks:
+                process_chunk(sub_chunk, depth=depth + 1)
             width, height = _get_size_from_anmf(chunk)
+            max_width, max_height = update_max_dimensions(max_width, max_height, width, height)
         elif chunk["fourcc"] == b"ICCP":
             flags[2] = b"1"
         elif chunk["fourcc"] == b"ALPH":
@@ -121,9 +202,12 @@ def set_vp8x(chunks):
             flags[5] = b"1"
         elif chunk["fourcc"] == b"ANIM":
             flags[6] = b"1"
-    width_minus_one = width - 1
-    height_minus_one = height - 1
 
+    for chunk in chunks:
+        process_chunk(chunk)
+
+    max_width_minus_one = max_width - 1
+    max_height_minus_one = max_height - 1
     if chunks[0]["fourcc"] == b"VP8X":
         chunks.pop(0)
 
@@ -131,8 +215,8 @@ def set_vp8x(chunks):
     length_bytes = b"\x0a\x00\x00\x00"
     flags_bytes = struct.pack("B", int(b"".join(flags), 2))
     padding_bytes = b"\x00\x00\x00"
-    width_bytes = struct.pack("<L", width_minus_one)[:3]
-    height_bytes = struct.pack("<L", height_minus_one)[:3]
+    width_bytes = struct.pack("<L", max_width_minus_one)[:3]
+    height_bytes = struct.pack("<L", max_height_minus_one)[:3]
 
     data_bytes = flags_bytes + padding_bytes + width_bytes + height_bytes
 
