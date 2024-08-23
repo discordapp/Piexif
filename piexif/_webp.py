@@ -147,26 +147,34 @@ def _get_sub_chunks_from_anmf(anmf_chunk):
     return sub_chunks
 
 def set_vp8x(chunks):
-    width = None
-    height = None
+    max_width = 0
+    max_height = 0
     flags = [b'0', b'0', b'0', b'0', b'0', b'0', b'0', b'0']  # [0, 0, ICC, Alpha, EXIF, XMP, Anim, 0]
 
     def process_chunk(chunk):
-        nonlocal width, height
+        nonlocal max_width, max_height
         if chunk['fourcc'] == b'VP8X':
             width, height = _get_size_from_vp8x(chunk)
+            max_width = max(max_width, width)
+            max_height = max(max_height, height)
         elif chunk['fourcc'] == b'VP8 ':
             width, height = _get_size_from_vp8(chunk)
+            max_width = max(max_width, width)
+            max_height = max(max_height, height)
         elif chunk['fourcc'] == b'VP8L':
             is_rgba = _vp8L_contains_alpha(chunk['data'])
             if is_rgba:
                 flags[3] = b'1'
             width, height = _get_size_from_vp8L(chunk)
+            max_width = max(max_width, width)
+            max_height = max(max_height, height)
         elif chunk['fourcc'] == b'ANMF':
             sub_chunks = _get_sub_chunks_from_anmf(chunk)
             for sub_chunk in sub_chunks:
                 process_chunk(sub_chunk)
-            width, height = _get_size_from_anmf(chunk)
+            frame_width, frame_height = _get_size_from_anmf(chunk)
+            max_width = max(max_width, frame_width)
+            max_height = max(max_height, frame_height)
         elif chunk['fourcc'] == b'ICCP':
             flags[2] = b'1'
         elif chunk['fourcc'] == b'ALPH':
@@ -181,8 +189,8 @@ def set_vp8x(chunks):
     for chunk in chunks:
         process_chunk(chunk)
 
-    width_minus_one = width - 1
-    height_minus_one = height - 1
+    max_width_minus_one = max_width - 1
+    max_height_minus_one = max_height - 1
 
     if chunks[0]['fourcc'] == b'VP8X':
         chunks.pop(0)
@@ -191,8 +199,8 @@ def set_vp8x(chunks):
     length_bytes = b'\x0a\x00\x00\x00'
     flags_bytes = struct.pack('B', int(b''.join(flags), 2))
     padding_bytes = b'\x00\x00\x00'
-    width_bytes = struct.pack('<L', width_minus_one)[:3]
-    height_bytes = struct.pack('<L', height_minus_one)[:3]
+    width_bytes = struct.pack('<L', max_width_minus_one)[:3]
+    height_bytes = struct.pack('<L', max_height_minus_one)[:3]
 
     data_bytes = flags_bytes + padding_bytes + width_bytes + height_bytes
 
