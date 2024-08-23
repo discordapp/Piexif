@@ -93,50 +93,110 @@ def _get_size_from_anmf(chunk):
     height = height_minus_one + 1
     return (width, height)
     
-def set_vp8x(chunks):
 
+def _get_sub_chunks_from_anmf(anmf_chunk):
+    """
+    Extracts and returns sub-chunks from the ANMF chunk data.
+
+    :param anmf_chunk: Dictionary containing the 'fourcc', 'length_bytes', and 'data' for the ANMF chunk.
+    :return: List of dictionaries representing sub-chunks found within the ANMF chunk.
+    """
+    data = anmf_chunk['data']
+    sub_chunks = []
+    offset = 0
+
+    # Fixed size for the ANMF header (Frame X, Frame Y, Width, Height, Duration, Reserved, B, D)
+    anmf_header_size = 16
+
+    # Skip the ANMF header to get to the Frame Data
+    offset += anmf_header_size
+
+    data_length = len(data)
+    while offset < data_length:
+        # Ensure there's enough data left for a new chunk (4 bytes for fourcc + 4 bytes for length)
+        if offset + 8 > data_length:
+            break
+
+        # Read the fourcc code (4 bytes)
+        fourcc = data[offset:offset + 4]
+        offset += 4
+
+        # Read the length of the chunk (4 bytes, little-endian)
+        length = struct.unpack('<I', data[offset:offset + 4])[0]
+        offset += 4
+
+        # Ensure there's enough data left for the chunk data
+        if offset + length > data_length:
+            break
+
+        # Read the chunk data
+        chunk_data = data[offset:offset + length]
+        offset += length
+
+        # Append the sub-chunk to the list
+        sub_chunks.append({
+            'fourcc': fourcc,
+            'length_bytes': struct.pack('<I', length),
+            'data': chunk_data
+        })
+
+        # Ensure chunks are padded to even length
+        if length % 2 == 1:
+            offset += 1
+
+    return sub_chunks
+
+def set_vp8x(chunks):
     width = None
     height = None
-    flags = [b"0", b"0", b"0", b"0", b"0", b"0", b"0", b"0"]  # [0, 0, ICC, Alpha, EXIF, XMP, Anim, 0]
+    flags = [b'0', b'0', b'0', b'0', b'0', b'0', b'0', b'0']  # [0, 0, ICC, Alpha, EXIF, XMP, Anim, 0]
+
+    def process_chunk(chunk):
+        nonlocal width, height
+        if chunk['fourcc'] == b'VP8X':
+            width, height = _get_size_from_vp8x(chunk)
+        elif chunk['fourcc'] == b'VP8 ':
+            width, height = _get_size_from_vp8(chunk)
+        elif chunk['fourcc'] == b'VP8L':
+            is_rgba = _vp8L_contains_alpha(chunk['data'])
+            if is_rgba:
+                flags[3] = b'1'
+            width, height = _get_size_from_vp8L(chunk)
+        elif chunk['fourcc'] == b'ANMF':
+            sub_chunks = _get_sub_chunks_from_anmf(chunk)
+            for sub_chunk in sub_chunks:
+                process_chunk(sub_chunk)
+            width, height = _get_size_from_anmf(chunk)
+        elif chunk['fourcc'] == b'ICCP':
+            flags[2] = b'1'
+        elif chunk['fourcc'] == b'ALPH':
+            flags[3] = b'1'
+        elif chunk['fourcc'] == b'EXIF':
+            flags[4] = b'1'
+        elif chunk['fourcc'] == b'XMP ':
+            flags[5] = b'1'
+        elif chunk['fourcc'] == b'ANIM':
+            flags[6] = b'1'
 
     for chunk in chunks:
-        if chunk["fourcc"] == b"VP8X":
-            width, height = _get_size_from_vp8x(chunk)
-        elif chunk["fourcc"] == b"VP8 ":
-            width, height = _get_size_from_vp8(chunk)
-        elif chunk["fourcc"] == b"VP8L":
-            is_rgba = _vp8L_contains_alpha(chunk["data"])
-            if is_rgba:
-                flags[3] = b"1"
-            width, height = _get_size_from_vp8L(chunk)
-        elif chunk["fourcc"] == b"ANMF":
-            width, height = _get_size_from_anmf(chunk)
-        elif chunk["fourcc"] == b"ICCP":
-            flags[2] = b"1"
-        elif chunk["fourcc"] == b"ALPH":
-            flags[3] = b"1"
-        elif chunk["fourcc"] == b"EXIF":
-            flags[4] = b"1"
-        elif chunk["fourcc"] == b"XMP ":
-            flags[5] = b"1"
-        elif chunk["fourcc"] == b"ANIM":
-            flags[6] = b"1"
+        process_chunk(chunk)
+
     width_minus_one = width - 1
     height_minus_one = height - 1
 
-    if chunks[0]["fourcc"] == b"VP8X":
+    if chunks[0]['fourcc'] == b'VP8X':
         chunks.pop(0)
 
-    header_bytes = b"VP8X"
-    length_bytes = b"\x0a\x00\x00\x00"
-    flags_bytes = struct.pack("B", int(b"".join(flags), 2))
-    padding_bytes = b"\x00\x00\x00"
-    width_bytes = struct.pack("<L", width_minus_one)[:3]
-    height_bytes = struct.pack("<L", height_minus_one)[:3]
+    header_bytes = b'VP8X'
+    length_bytes = b'\x0a\x00\x00\x00'
+    flags_bytes = struct.pack('B', int(b''.join(flags), 2))
+    padding_bytes = b'\x00\x00\x00'
+    width_bytes = struct.pack('<L', width_minus_one)[:3]
+    height_bytes = struct.pack('<L', height_minus_one)[:3]
 
     data_bytes = flags_bytes + padding_bytes + width_bytes + height_bytes
 
-    vp8x_chunk = {"fourcc":header_bytes, "length_bytes":length_bytes, "data":data_bytes}
+    vp8x_chunk = {'fourcc': header_bytes, 'length_bytes': length_bytes, 'data': data_bytes}
     chunks.insert(0, vp8x_chunk)
 
     return chunks
