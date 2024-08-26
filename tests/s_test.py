@@ -870,6 +870,9 @@ class WebpTests(unittest.TestCase):
             "pil3.webp",
             "pil_rgb.webp",
             "pil_rgba.webp",
+            "pil_animated1.webp",
+            "pil_animated2.webp",
+            "pil_animated3.webp",
         ]
 
         for filename in files:
@@ -901,6 +904,9 @@ class WebpTests(unittest.TestCase):
             "pil3.webp",
             "pil_rgb.webp",
             "pil_rgba.webp",
+            "pil_animated1.webp",
+            "pil_animated2.webp",
+            "pil_animated3.webp",
         ]
 
         exif_dict = {
@@ -936,6 +942,9 @@ class WebpTests(unittest.TestCase):
             "pil3.webp",
             "pil_rgb.webp",
             "pil_rgba.webp",
+            "pil_animated1.webp",
+            "pil_animated2.webp",
+            "pil_animated3.webp",
         ]
 
         for filename in files:
@@ -999,6 +1008,9 @@ class WebpTests(unittest.TestCase):
             "pil3.webp",
             "pil_rgb.webp",
             "pil_rgba.webp",
+            "pil_animated1.webp",
+            "pil_animated2.webp",
+            "pil_animated3.webp",
         ]
 
         for filename in files:
@@ -1021,6 +1033,9 @@ class WebpTests(unittest.TestCase):
             "pil3.webp",
             "pil_rgb.webp",
             "pil_rgba.webp",
+            "pil_animated1.webp",
+            "pil_animated2.webp",
+            "pil_animated3.webp",
         ]
 
         exif_dict = {
